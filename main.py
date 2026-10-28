@@ -1,5 +1,6 @@
 
 import os
+import sys
 import argparse
 import json
 from dotenv import load_dotenv
@@ -32,35 +33,37 @@ def main():
     {"role": "user", "content": args.user_prompt},
     ] 
 
-    response = client.chat.completions.create(
-    model="openrouter/free",
-    messages=messages,
-    temperature=0,
-    tools=available_functions,
-    )
+    for omg in range(20):
+        response = client.chat.completions.create(
+        model="openrouter/free",
+        messages=messages,
+        temperature=0,
+        tools=available_functions,
+        )
+        message = response.choices[0].message
+        messages.append(message)
 
-    if not response.usage:
-        raise RuntimeError('No response executed - check input calls.')
-
-    prompt_tokens = response.usage.prompt_tokens
-    response_tokens = response.usage.completion_tokens
-    user_prompt = args.user_prompt
-
-    message = response.choices[0].message
-    if message.tool_calls:
-        for tool_call in message.tool_calls:
-            result_message = call_functions(tool_call, args.verbose)
-            if not result_message["content"]:
-                raise Exception("No results! Function ran, but returned no results.")
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                result_message = call_functions(tool_call, args.verbose)
+                if not result_message["content"]:
+                    raise Exception("No results! Function ran, but returned no results.")
+                if args.verbose:
+                    print(f"-> {result_message['content']}")
+                messages.append(result_message)                     
+        else:    
+            print(response.choices[0].message.content)
+            prompt_tokens = response.usage.prompt_tokens
+            response_tokens = response.usage.completion_tokens
+            user_prompt = args.user_prompt
             if args.verbose:
-                    print(f"-> {result_message['content']}")             
-    else:    
-        print(response.choices[0].message.content)
-
-    if args.verbose:
-        print(f"User prompt: {user_prompt}")
-        print(f"Prompt tokens: {prompt_tokens}")
-        print(f"Response tokens: {response_tokens}")
+                print(f"User prompt: {user_prompt}")
+                print(f"Prompt tokens: {prompt_tokens}")
+                print(f"Response tokens: {response_tokens}")
+            return
+   
+    print(f'Too many iterations. Program terminated.')
+    sys.exit(1)
     
 if __name__ == "__main__":
     main()
